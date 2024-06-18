@@ -1,7 +1,7 @@
 from pygame import *
 from os import environ
 import sys
-
+import random 
 init()
 
 sys.setrecursionlimit(9000000)
@@ -31,8 +31,8 @@ board=[[[0,0] for i in range(11)]for l in range(7)]
 leftClick=False
 playerTurn1=1
 alivePlayers=[]
-row = 6
-col = 9
+row = 5
+col = 4
 count=0
 colours = [(255,0,0), (0, 255, 0), (0, 0, 255), (252,241,32)]
 players=0
@@ -82,8 +82,8 @@ playRect=Rect(340,390,190,70)
 player2Rect=Rect(315,285,42,50)
 player3Rect=Rect(415,285,42,50)
 player4Rect=Rect(515,285,45,50)
-gameRect=Rect(105,145,675,450)
-
+gameRect=Rect(105,145,75*col,75*row)
+winnerSub=screen.copy().subsurface(gameRect)
 pieceImages={
     1 : [rMine,rrMine,rrrMine],
     2 : [gMine,ggMine,gggMine],
@@ -140,6 +140,22 @@ def add(x, y, playerTurn1):
                 explodeMiddle(x, y, playerTurn1)
 
 def explodeCorner(x, y, playerTurn1):
+    temp = alivePlayers[:]
+    for player in temp:
+        if not boardCheck(board, player) and count>players:
+            alivePlayers.remove(player)
+            winnerSub=screen.copy().subsurface(gameRect)
+            
+
+    # Check if game should end
+    if len(alivePlayers) == 1:
+        global mode
+        screen.set_clip()
+        mode = 'winner'
+        drawPieces(board)
+        drawBoard(colours[playerTurn1-1])
+        return
+
     board[y][x] = [0, 0]
     if [x, y] == [0, 0]:
         board[y+1][x][0] = playerTurn1
@@ -164,8 +180,26 @@ def explodeCorner(x, y, playerTurn1):
         explodeAdd(x, y-1, x, y, playerTurn1)
         board[y][x-1][0] = playerTurn1
         explodeAdd(x-1, y, x, y, playerTurn1)
+   
 
 def explodeEdge(x, y, playerTurn1):
+    temp = alivePlayers[:]
+    for player in temp:
+        if not boardCheck(board, player) and count>players:
+            alivePlayers.remove(player)
+            winnerSub=screen.copy().subsurface(gameRect)
+            
+            
+
+    # Check if game should end
+    if len(alivePlayers) == 1:
+        global mode
+        screen.set_clip()
+        mode = 'winner'
+        drawPieces(board)
+        drawBoard(colours[playerTurn1-1])
+        return
+
     board[y][x] = [0, 0]
     if x == 0:
         board[y+1][x][0] = playerTurn1
@@ -195,8 +229,26 @@ def explodeEdge(x, y, playerTurn1):
         explodeAdd(x+1, y, x, y, playerTurn1)
         board[y][x - 1][0] = playerTurn1
         explodeAdd(x - 1, y, x, y, playerTurn1)
+   
 
 def explodeMiddle(x, y, playerTurn1):
+    temp = alivePlayers[:]
+    for player in temp:
+        if not boardCheck(board, player) and count>players:
+            alivePlayers.remove(player)
+            winnerSub=screen.copy().subsurface(gameRect)
+            
+
+    # Check if game should end
+    if len(alivePlayers) == 1:
+        global mode
+        screen.set_clip()
+        mode = 'winner'
+        drawPieces(board)
+        drawBoard(colours[playerTurn1-1])
+        return
+
+
     board[y][x] = [0, 0]
     board[y-1][x][0] = playerTurn1
     explodeAdd(x, y-1, x, y, playerTurn1)
@@ -207,6 +259,7 @@ def explodeMiddle(x, y, playerTurn1):
     board[y+1][x][0] = playerTurn1
     explodeAdd(x, y+1, x, y, playerTurn1)
 
+    
 def explodeAdd(x, y, oldx, oldy, player):
     if board[y][x][1] == 0:
         board[y][x] = [player, 1]
@@ -243,8 +296,8 @@ def validClick(gameRect, leftClick, mx, my):
     return gameRect.collidepoint(mx,my) and leftClick
 
 def boardCheck(board, playerTurn1):
-    for y in range(6):
-        for x in range(9):
+    for y in range(row):
+        for x in range(col):
             placeType = board[y][x][0]
             if placeType == playerTurn1:
                 return True
@@ -252,6 +305,26 @@ def boardCheck(board, playerTurn1):
 
 def validMove(board, px, py, playerTurn1):
     return board[py][px][0]==0 or board[py][px][0]==playerTurn1       
+
+
+# Function to get a list of valid moves for the AI
+def get_valid_moves(board, player):
+    valid_moves = []
+    for y in range(row):
+        for x in range(col):
+            if board[y][x][0] == player or board[y][x][1] == 0:
+                valid_moves.append((x, y))
+    return valid_moves
+
+
+# Function to let the AI make a random move
+def ai_move(board, player):
+    valid_moves = get_valid_moves(board, player)
+    if valid_moves:
+        move = random.choice(valid_moves)
+        add(move[0], move[1], player)
+
+
 
 while running:
     leftClick=False
@@ -319,6 +392,9 @@ while running:
             mode='game'
             game=True
             time.wait(100)
+
+
+
     elif mode=='game':
         if game==True:
             screen.fill(BLACK)
@@ -331,28 +407,42 @@ while running:
         if not boardCheck(board, playerTurn1) and count>players:
             playerTurn1 = playerTurn1 % players + 1
         
-        elif validClick(gameRect, leftClick, mx, my) and validMove(board, px, py, playerTurn1):
-            add(px,py,playerTurn1)
-            temp=alivePlayers
-            for player in temp:
-                if not boardCheck(board, player) and count>players:
-                    alivePlayers.remove(player)
-                    drawPieces(board)
-                    winnerSub=screen.copy().subsurface(gameRect)
-                if len(alivePlayers)==1:
-                    screen.set_clip()
-                    mode='winner'
-                    
+        # AI move for player 2
+        if playerTurn1 == 2:
+            time.wait(10)
+            ai_move(board, playerTurn1)     
             if playerTurn1==players:
                 playerTurn1=1
             else:
                 playerTurn1+=1
             count+=1
-    
+
+        elif validClick(gameRect, leftClick, mx, my) and validMove(board, px, py, playerTurn1):
+            add(px,py,playerTurn1)
+                        
+            if playerTurn1==players:
+                playerTurn1=1
+            else:
+                playerTurn1+=1
+            count+=1
+        
+        temp=alivePlayers
+        for player in temp:
+            if not boardCheck(board, player) and count>players:
+                alivePlayers.remove(player)
+                drawPieces(board)
+                winnerSub=screen.copy().subsurface(gameRect)
+            if len(alivePlayers)==1:
+                screen.set_clip()
+
+                mode='winner'
+
 
         drawPieces(board)
         drawBoard(colours[playerTurn1-1])
 
+
+ 
     elif mode == 'winner':
         screen.blit(titlePic,(0,0))
         screen.blit(infectedPic,(290,45))
