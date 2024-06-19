@@ -2,6 +2,7 @@ from pygame import *
 from os import environ
 import sys
 import random 
+import copy
 init()
 
 sys.setrecursionlimit(9000000)
@@ -27,12 +28,13 @@ display.set_caption("Chain Infect")
 
 mode='title'
 rectList=[]
-board=[[[0,0] for i in range(11)]for l in range(7)]
+row = 5
+col = 5
+board=[[[0,0] for i in range(col)]for l in range(row)]
 leftClick=False
 playerTurn1=1
 alivePlayers=[]
-row = 5
-col = 4
+
 count=0
 colours = [(255,0,0), (0, 255, 0), (0, 0, 255), (252,241,32)]
 players=0
@@ -119,7 +121,203 @@ def drawPieces(board):
             numPieces = board[y][x][1]
             if placeType != 0:
                 screen.blit(pieceImages[placeType][numPieces-1],(placeX,placeY))
-      
+
+# Define the dummy_add and related explosion functions
+def dummy_add(x, y, playerTurn1):
+    print(x,y)
+    if board[y][x][1] == 0:
+        board[y][x] = [playerTurn1, 1]
+    elif board[y][x][0] == playerTurn1:
+        if isCorner(x, y):
+            dummy_explodeCorner(x, y, playerTurn1, alivePlayers)
+        elif isEdge(x, y):
+            if board[y][x][1] < 2:
+                board[y][x][1] += 1
+            else:
+                dummy_explodeEdge(x, y, playerTurn1, alivePlayers)
+        else:
+            if board[y][x][1] < 3:
+                board[y][x][1] += 1
+            else:
+                dummy_explodeMiddle(x, y, playerTurn1, alivePlayers)
+
+def dummy_explodeCorner(x, y, playerTurn1, alivePlayers):
+    
+    board[y][x] = [0, 0]
+    if [x, y] == [0, 0]:
+        board[y+1][x][0] = playerTurn1
+        dummy_explodeAdd(x, y+1, x, y, playerTurn1, alivePlayers)
+        board[y][x+1][0] = playerTurn1
+        dummy_explodeAdd(x+1, y, x, y, playerTurn1, alivePlayers)
+    elif [x, y] == [col-1, 0]:
+        board[y+1][x][0] = playerTurn1
+        dummy_explodeAdd(x, y+1, x, y, playerTurn1, alivePlayers)
+        board[y][x-1][0] = playerTurn1
+        dummy_explodeAdd(x-1, y, x, y, playerTurn1, alivePlayers)
+    elif [x, y] == [0, row-1]:
+        board[y-1][x][0] = playerTurn1
+        dummy_explodeAdd(x, y-1, x, y, playerTurn1, alivePlayers)
+        board[y][x+1][0] = playerTurn1
+        dummy_explodeAdd(x+1, y, x, y, playerTurn1, alivePlayers)
+    elif [x, y] == [col-1, row-1]:
+        board[y-1][x][0] = playerTurn1
+        dummy_explodeAdd(x, y-1, x, y, playerTurn1, alivePlayers)
+        board[y][x-1][0] = playerTurn1
+        dummy_explodeAdd(x-1, y, x, y, playerTurn1, alivePlayers)
+
+def dummy_explodeEdge(x, y, playerTurn1, alivePlayers):
+    board[y][x] = [0, 0]
+    if x == 0:
+        board[y+1][x][0] = playerTurn1
+        dummy_explodeAdd(x, y+1, x, y, playerTurn1, alivePlayers)
+        board[y][x+1][0] = playerTurn1
+        dummy_explodeAdd(x+1, y, x, y, playerTurn1, alivePlayers)
+        board[y-1][x][0] = playerTurn1
+        dummy_explodeAdd(x, y-1, x, y, playerTurn1, alivePlayers)
+    elif x == col-1:
+        board[y+1][x][0] = playerTurn1
+        dummy_explodeAdd(x, y+1, x, y, playerTurn1, alivePlayers)
+        board[y][x-1][0] = playerTurn1
+        dummy_explodeAdd(x-1, y, x, y, playerTurn1, alivePlayers)
+        board[y-1][x][0] = playerTurn1
+        dummy_explodeAdd(x, y-1, x, y, playerTurn1, alivePlayers)
+    elif y == 0:
+        board[y+1][x][0] = playerTurn1
+        dummy_explodeAdd(x, y+1, x, y, playerTurn1, alivePlayers)
+        board[y][x+1][0] = playerTurn1
+        dummy_explodeAdd(x+1, y, x, y, playerTurn1, alivePlayers)
+        board[y][x-1][0] = playerTurn1
+        dummy_explodeAdd(x-1, y, x, y, playerTurn1, alivePlayers)
+    elif y == row-1:
+        board[y-1][x][0] = playerTurn1
+        dummy_explodeAdd(x, y-1, x, y, playerTurn1, alivePlayers)
+        board[y][x+1][0] = playerTurn1
+        dummy_explodeAdd(x+1, y, x, y, playerTurn1, alivePlayers)
+        board[y][x-1][0] = playerTurn1
+        dummy_explodeAdd(x-1, y, x, y, playerTurn1, alivePlayers)
+
+def dummy_explodeMiddle(x, y, playerTurn1, alivePlayers):
+    board[y][x] = [0, 0]
+    board[y-1][x][0] = playerTurn1
+    dummy_explodeAdd(x, y-1, x, y, playerTurn1, alivePlayers)
+    board[y][x+1][0] = playerTurn1
+    dummy_explodeAdd(x+1, y, x, y, playerTurn1, alivePlayers)
+    board[y][x-1][0] = playerTurn1
+    dummy_explodeAdd(x-1, y, x, y, playerTurn1, alivePlayers)
+    board[y+1][x][0] = playerTurn1
+    dummy_explodeAdd(x, y+1, x, y, playerTurn1, alivePlayers)
+
+def dummy_explodeAdd(x, y, oldx, oldy, player, alivePlayers):
+    
+    if (x < 0 or x >= col or y < 0 or y >= row or (x, y) == (oldx, oldy)):
+        return
+    if board[y][x][1] == 0:
+        board[y][x] = [player, 1]
+    else:
+        if isCorner(x, y):
+            dummy_explodeCorner(x, y, player, alivePlayers)
+        elif isEdge(x, y):
+            if board[y][x][1] < 2:
+                board[y][x][1] += 1
+            else:
+                dummy_explodeEdge(x, y, player, alivePlayers)
+        else:
+            if board[y][x][1] < 3:
+                board[y][x][1] += 1
+            else:
+                dummy_explodeMiddle(x, y, player, alivePlayers)
+    board[y][x] = [0, 0]
+
+# Function to check if the game is won
+def check_won(board):
+    player_counts = {1: 0, 2: 0}
+    for y in range(row):
+        for x in range(col):
+            if board[y][x][0] in player_counts:
+                player_counts[board[y][x][0]] += 1
+    if player_counts[1] == 0:
+        return 2
+    elif player_counts[2] == 0:
+        return 1
+    else:
+        return 9999
+
+def evaluate_board(board, player):
+    score = 0
+    for y in range(row):
+        for x in range(col):
+            if board[y][x][0] == player:
+                score += board[y][x][1]
+            elif board[y][x][0] != 0:
+                score -= board[y][x][1]
+    return score
+
+def minimax( depth, alpha, beta, maximizing_player, player):
+  
+    global alivePlayers,board
+    opponent = 1 if player == 2 else 2
+    if depth == 0 or check_won(board) != 9999:
+        return evaluate_board(board, player if maximizing_player else opponent), None
+
+    best_move = None
+
+    if maximizing_player:
+        max_eval = float('-inf')
+        for y in range(row):
+            for x in range(col):
+                if board[y][x][0] == player or board[y][x][0] == 0:
+                    board_copy = copy.deepcopy(board)
+                    alivePlayers_copy = copy.deepcopy(alivePlayers)
+                    dummy_add(x, y, player)
+                    print(board)
+                    eval, _ = minimax(depth - 1, alpha, beta, False, player)
+                    board = copy.deepcopy(board_copy)
+                    alivePlayers = copy.deepcopy(alivePlayers_copy)
+                    if eval > max_eval:
+                        max_eval = eval
+                        best_move = (x, y)
+                    alpha = max(alpha, eval)
+                    if beta <= alpha:
+                        break
+        return max_eval, best_move
+    else:
+        min_eval = float('inf')
+        for y in range(row):
+            for x in range(col):
+                if board[y][x][0] == opponent or board[y][x][0] == 0:
+                    board_copy = copy.deepcopy(board)
+                    alivePlayers_copy = copy.deepcopy(alivePlayers)
+                    dummy_add(x, y, opponent)
+                    eval, _ = minimax(depth - 1, alpha, beta, True, player)
+                    board = copy.deepcopy(board_copy)
+                    alivePlayers = copy.deepcopy(alivePlayers_copy)
+                    if eval < min_eval:
+                        min_eval = eval
+                        best_move = (x, y)
+                    beta = min(beta, eval)
+                    if beta <= alpha:
+                        break
+        return min_eval, best_move
+
+def best_move(player):
+    global alivePlayers,board
+    best_val = -float('inf')
+    best_move = None
+    for y in range(row):
+        for x in range(col):
+            if board[y][x][0] == player or board[y][x][0] == 0:
+                board_copy = copy.deepcopy(board)
+                alivePlayers_copy = copy.deepcopy(alivePlayers)
+                dummy_add(x, y, player)
+                move_val, _ = minimax( 2, float('-inf'), float('inf'), False, player)
+                board = copy.deepcopy(board_copy)
+                alivePlayers = copy.deepcopy(alivePlayers_copy)
+                if move_val > best_val:
+                    best_val = move_val
+                    best_move = (x, y)
+                    print(f"Best move so far: {best_move} with value: {best_val}")
+    return best_move
+
 
 def add(x, y, playerTurn1):
     if board[y][x][1] == 0:
@@ -317,15 +515,6 @@ def get_valid_moves(board, player):
     return valid_moves
 
 
-# Function to let the AI make a random move
-def ai_move(board, player):
-    valid_moves = get_valid_moves(board, player)
-    if valid_moves:
-        move = random.choice(valid_moves)
-        add(move[0], move[1], player)
-
-
-
 while running:
     leftClick=False
     for evt in event.get():
@@ -410,7 +599,10 @@ while running:
         # AI move for player 2
         if playerTurn1 == 2:
             time.wait(10)
-            ai_move(board, playerTurn1)     
+            ai_move_res = best_move(2)
+            if ai_move_res:
+                x, y = ai_move_res
+                add(x, y, 2)    
             if playerTurn1==players:
                 playerTurn1=1
             else:
@@ -448,6 +640,8 @@ while running:
         screen.blit(infectedPic,(290,45))
         screen.blit(winnerSub,(105,145))
         drawBoard((255,255,255))
+        drawPieces(board)
+        
         draw.rect(screen,WHITE,(212,263,480,200))
         if alivePlayers==[1]:
             screen.blit(redWin,(295,330))
