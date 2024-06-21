@@ -29,7 +29,7 @@ display.set_caption("Chain Infect")
 mode='title'
 rectList=[]
 row = 6
-col = 9
+col = 8
 board=[[[0,0] for i in range(col)]for l in range(row)]
 leftClick=False
 playerTurn1=1
@@ -377,25 +377,42 @@ def minimax( depth, alpha, beta, maximizing_player, player):
         return min_eval, best_move
 
 def best_move(player):
-    global board
+    global alivePlayers,board
     best_val = -float('inf')
     best_move = None
-    candidate_moves = genetic_algorithm(board, player, 50, 10, 5, 0.2)
-    for move in candidate_moves:
-        x, y = move
-        if board[y][x][0] == player or board[y][x][0] == 0:
-            board_copy = copy.deepcopy(board)
-                
-            dummy_add(x, y, player)
-            move_val, _ = minimax( 2, float('-inf'), float('inf'), False, player)
-            board = copy.deepcopy(board_copy)
-            if move_val > best_val:
-                best_val = move_val
-                best_move = (x, y)
+    
+    if countTotal(board):
+        candidate_moves = genetic_algorithm(board, player, 50, 10, 5, 0.2)
+        for move in candidate_moves:
+            x, y = move
+            if board[y][x][0] == player or board[y][x][0] == 0:
+                board_copy = copy.deepcopy(board)
 
-    print(f"Best move so far: {best_move} with value: {best_val}")               
+                dummy_add(x, y, player)
+                move_val, _ = minimax( 2, float('-inf'), float('inf'), False, player)
+                board = copy.deepcopy(board_copy)
+                if move_val > best_val:
+                    best_val = move_val
+                    best_move = (x, y)
+                    
+        print(f"Best move GA: {best_move} with value: {best_val}")
+    else:
+        for y in range(row):
+            for x in range(col):
+                if board[y][x][0] == player or board[y][x][0] == 0:
+                    board_copy = copy.deepcopy(board)
+                    alivePlayers_copy = copy.deepcopy(alivePlayers)
+                    dummy_add(x, y, player)
+                    move_val, _ = minimax( 2, float('-inf'), float('inf'), False, player)
+                    board = copy.deepcopy(board_copy)
+                    alivePlayers = copy.deepcopy(alivePlayers_copy)
+                    if move_val > best_val:
+                        best_val = move_val
+                        best_move = (x, y)
+                    
+        print(f"Best move minmax so far: {best_move} with value: {best_val}")
     return best_move
-
+    
 
 def add(x, y, playerTurn1):
     if board[y][x][1] == 0:
@@ -591,6 +608,18 @@ def get_valid_moves(board, player):
             if board[y][x][0] == player or board[y][x][1] == 0:
                 valid_moves.append((x, y))
     return valid_moves
+
+def countTotal(board):
+    total_occupied = 0
+
+    for y in range(row):
+        for x in range(col):
+            if board[y][x][0] != 0:  
+                total_occupied += 1
+    if total_occupied<(row*col)/2:
+        return 1
+    else:
+        return 0
 
 
 while running:
