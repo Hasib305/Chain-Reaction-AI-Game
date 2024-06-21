@@ -28,8 +28,8 @@ display.set_caption("Chain Infect")
 
 mode='title'
 rectList=[]
-row = 5
-col = 5
+row = 6
+col = 9
 board=[[[0,0] for i in range(col)]for l in range(row)]
 leftClick=False
 playerTurn1=1
@@ -122,9 +122,77 @@ def drawPieces(board):
             if placeType != 0:
                 screen.blit(pieceImages[placeType][numPieces-1],(placeX,placeY))
 
+
+def generate_population(size):
+    population = []
+    for x in range(col):
+        for y in range(row):
+            if board[y][x][0] == 0 or board[y][x][0] == player:
+                population.append((x, y))
+    return population
+
+def evaluate_fitness( player, candidate):
+    global board
+    x, y = candidate
+    if board[y][x][0] == player or board[y][x][0] == 0:
+        board_copy = copy.deepcopy(board)
+        dummy_add(x, y, player)
+        fitness = evaluate_board(board, player)
+        board = copy.deepcopy(board_copy)
+        return fitness
+    else:
+        return float('-inf')
+
+def rank_based_selection(population, fitness_scores, num_parents):
+    ranked_population = sorted(zip(population, fitness_scores), key=lambda x: x[1], reverse=True)
+    parents = [x[0] for x in ranked_population[:num_parents]]
+    return parents
+
+def crossover(parent1, parent2):
+    child1 = (random.randint(0, col - 1), random.randint(0, row - 1))
+    child2 = (random.randint(0, col - 1), random.randint(0, row - 1))
+    return child1, child2
+
+def mutate(candidate, mutation_rate):
+    if random.random() < mutation_rate:
+        x, y = candidate
+        while board[y][x][0] != 0 and board[y][x][0] != player:
+            x, y = random.randint(0, col - 1), random.randint(0, row - 1)
+        return (x, y)
+    else:
+        return candidate
+
+def genetic_algorithm(board, player, population_size, num_parents, num_generations, mutation_rate):
+    population = generate_population(population_size)
+    best_move = None
+    best_score = float('-inf')
+    all_candidate_moves = []
+
+    for _ in range(num_generations):
+        fitness_scores = [evaluate_fitness(player, candidate) for candidate in population]
+        parents = rank_based_selection(population, fitness_scores, num_parents)
+
+        new_population = []
+        for _ in range(population_size // 2):
+            parent1, parent2 = random.sample(parents, 2)
+            child1, child2 = crossover(parent1, parent2)
+            child1 = mutate(child1, mutation_rate)
+            child2 = mutate(child2, mutation_rate)
+            new_population.append(child1)
+            new_population.append(child2)
+
+        population = new_population
+        best_candidate = population[fitness_scores.index(max(fitness_scores))]
+        best_score = max(fitness_scores)
+        all_candidate_moves.append(best_candidate)
+        if best_score > evaluate_board(board, player):
+            best_move = best_candidate
+
+    return all_candidate_moves
+
 # Define the dummy_add and related explosion functions
 def dummy_add(x, y, playerTurn1):
-    print(x,y)
+   
     if board[y][x][1] == 0:
         board[y][x] = [playerTurn1, 1]
     elif board[y][x][0] == playerTurn1:
@@ -209,8 +277,7 @@ def dummy_explodeMiddle(x, y, playerTurn1, alivePlayers):
 
 def dummy_explodeAdd(x, y, oldx, oldy, player, alivePlayers):
     
-    if (x < 0 or x >= col or y < 0 or y >= row or (x, y) == (oldx, oldy)):
-        return
+ 
     if board[y][x][1] == 0:
         board[y][x] = [player, 1]
     else:
@@ -247,15 +314,25 @@ def evaluate_board(board, player):
     for y in range(row):
         for x in range(col):
             if board[y][x][0] == player:
+                # Basic score based on atom count
                 score += board[y][x][1]
+                # Additional scores for controlling corners and edges
+                if isCorner(x, y):
+                    score += 3
+                elif isEdge(x, y):
+                    score += 2
             elif board[y][x][0] != 0:
                 score -= board[y][x][1]
+                if isCorner(x, y):
+                    score -= 3
+                elif isEdge(x, y):
+                    score -= 2
     return score
 
 def minimax( depth, alpha, beta, maximizing_player, player):
   
     global alivePlayers,board
-    opponent = 1 if player == 2 else 2
+    opponent = 1 
     if depth == 0 or check_won(board) != 9999:
         return evaluate_board(board, player if maximizing_player else opponent), None
 
@@ -267,12 +344,11 @@ def minimax( depth, alpha, beta, maximizing_player, player):
             for x in range(col):
                 if board[y][x][0] == player or board[y][x][0] == 0:
                     board_copy = copy.deepcopy(board)
-                    alivePlayers_copy = copy.deepcopy(alivePlayers)
                     dummy_add(x, y, player)
-                    print(board)
+                    
                     eval, _ = minimax(depth - 1, alpha, beta, False, player)
+                   
                     board = copy.deepcopy(board_copy)
-                    alivePlayers = copy.deepcopy(alivePlayers_copy)
                     if eval > max_eval:
                         max_eval = eval
                         best_move = (x, y)
@@ -289,6 +365,7 @@ def minimax( depth, alpha, beta, maximizing_player, player):
                     alivePlayers_copy = copy.deepcopy(alivePlayers)
                     dummy_add(x, y, opponent)
                     eval, _ = minimax(depth - 1, alpha, beta, True, player)
+                    
                     board = copy.deepcopy(board_copy)
                     alivePlayers = copy.deepcopy(alivePlayers_copy)
                     if eval < min_eval:
@@ -300,22 +377,23 @@ def minimax( depth, alpha, beta, maximizing_player, player):
         return min_eval, best_move
 
 def best_move(player):
-    global alivePlayers,board
+    global board
     best_val = -float('inf')
     best_move = None
-    for y in range(row):
-        for x in range(col):
-            if board[y][x][0] == player or board[y][x][0] == 0:
-                board_copy = copy.deepcopy(board)
-                alivePlayers_copy = copy.deepcopy(alivePlayers)
-                dummy_add(x, y, player)
-                move_val, _ = minimax( 2, float('-inf'), float('inf'), False, player)
-                board = copy.deepcopy(board_copy)
-                alivePlayers = copy.deepcopy(alivePlayers_copy)
-                if move_val > best_val:
-                    best_val = move_val
-                    best_move = (x, y)
-                    print(f"Best move so far: {best_move} with value: {best_val}")
+    candidate_moves = genetic_algorithm(board, player, 50, 10, 5, 0.2)
+    for move in candidate_moves:
+        x, y = move
+        if board[y][x][0] == player or board[y][x][0] == 0:
+            board_copy = copy.deepcopy(board)
+                
+            dummy_add(x, y, player)
+            move_val, _ = minimax( 2, float('-inf'), float('inf'), False, player)
+            board = copy.deepcopy(board_copy)
+            if move_val > best_val:
+                best_val = move_val
+                best_move = (x, y)
+
+    print(f"Best move so far: {best_move} with value: {best_val}")               
     return best_move
 
 
