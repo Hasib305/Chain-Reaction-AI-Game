@@ -15,7 +15,7 @@ RED=(255,0,0)
 
 GREEN=(0,255,0)
 BLUE=(0,0,255)
-BLACK=(0,0,0)
+BLACK=(0 ,0 ,0 )
 WHITE=(255,255,255)
 MYYELLOW=(204,224,90)
 
@@ -28,8 +28,8 @@ display.set_caption("Chain Infect")
 
 mode='title'
 rectList=[]
-row = 6
-col = 8
+row = 5
+col = 7
 board=[[[0,0] for i in range(col)]for l in range(row)]
 leftClick=False
 playerTurn1=1
@@ -45,6 +45,7 @@ running=True
 
 #--------------images-------------#
 titlePic=image.load("images/menu/start.jpeg")
+backpic=image.load("images/menu/space.png")
 bigInfectedPic=image.load("images/menu/bigInfectedPic.png")
 infectedPic=image.load("images/menu/infectedPic.png")
 playPic=image.load("images/menu/playPic.png")
@@ -122,6 +123,26 @@ def drawPieces(board):
             if placeType != 0:
                 screen.blit(pieceImages[placeType][numPieces-1],(placeX,placeY))
 
+def display_player_move_comment(comment):
+    global last_comment_rect  # Store the last rendered comment rectangle
+    
+    # Define the size and position of the black rectangle
+    rect_width = 600
+    rect_height = 35
+    rect_position = (200, 550)  # Adjust position as needed
+
+    # Draw the black rectangle first
+    black_rect = Rect(rect_position, (rect_width, rect_height))
+    draw.rect(screen, (0, 0, 0), black_rect)
+    
+    fontt = font.Font(None, 36)
+    text = fontt.render(comment, True, (255, 255, 255))
+    text_rect = text.get_rect(center=black_rect.center)
+    screen.blit(text, text_rect)
+    
+    # Update the display and store the rect of the rendered text for clearing later
+    display.update(black_rect)
+    last_comment_rect = black_rect
 
 def generate_population(size):
     population = []
@@ -621,6 +642,76 @@ def countTotal(board):
     else:
         return 0
 
+import numpy as np
+
+def fuzzy_membership_threat(x):
+    if x <= 1:
+        return {"Very Low": 1, "Low": 0, "Medium": 0, "High": 0, "Very High": 0}
+    elif 1 < x <= 3:
+        return {"Very Low": (3 - x) / 2, "Low": (x - 1) / 2, "Medium": 0, "High": 0, "Very High": 0}
+    elif 3 < x <= 5:
+        return {"Very Low": 0, "Low": (5 - x) / 2, "Medium": (x - 3) / 2, "High": 0, "Very High": 0}
+    elif 5 < x <= 7:
+        return {"Very Low": 0, "Low": 0, "Medium": (7 - x) / 2, "High": (x - 5) / 2, "Very High": 0}
+    else:
+        return {"Very Low": 0, "Low": 0, "Medium": 0, "High": (9 - x) / 2, "Very High": (x - 7) / 2}
+
+def fuzzy_membership_opportunity(x):
+    if x <= 1:
+        return {"Very Low": 1, "Low": 0, "Medium": 0, "High": 0, "Very High": 0}
+    elif 1 < x <= 3:
+        return {"Very Low": (3 - x) / 2, "Low": (x - 1) / 2, "Medium": 0, "High": 0, "Very High": 0}
+    elif 3 < x <= 5:
+        return {"Very Low": 0, "Low": (5 - x) / 2, "Medium": (x - 3) / 2, "High": 0, "Very High": 0}
+    elif 5 < x <= 7:
+        return {"Very Low": 0, "Low": 0, "Medium": (7 - x) / 2, "High": (x - 5) / 2, "Very High": 0}
+    else:
+        return {"Very Low": 0, "Low": 0, "Medium": 0, "High": (9 - x) / 2, "Very High": (x - 7) / 2}
+
+
+def fuzzy_evaluate(threat_levels, opportunity_levels):
+    if threat_levels["Very High"] > 0:
+        threat_comment = "Very High Threat"
+    elif threat_levels["High"] > 0:
+        threat_comment = "High Threat"
+    elif threat_levels["Medium"] > 0:
+        threat_comment = "Medium Threat"
+    elif threat_levels["Low"] > 0:
+        threat_comment = "Low Threat"
+    else:
+        threat_comment = "Very Low Threat"
+
+    if opportunity_levels["Very High"] > 0:
+        opportunity_comment = "Very High Opportunity"
+    elif opportunity_levels["High"] > 0:
+        opportunity_comment = "High Opportunity"
+    elif opportunity_levels["Medium"] > 0:
+        opportunity_comment = "Medium Opportunity"
+    elif opportunity_levels["Low"] > 0:
+        opportunity_comment = "Low Opportunity"
+    else:
+        opportunity_comment = "Very Low Opportunity"
+    
+    return threat_comment, opportunity_comment
+
+def fuzzy_evaluate_player_move(board, player, x, y):
+    threat = 0
+    opportunity = 0
+    for i in range(row):
+        for j in range(col):
+            if board[i][j][0] != player and board[i][j][0] != 0:
+                threat += 1
+            if board[i][j][0] == player:
+                opportunity += 1
+
+    threat_levels = fuzzy_membership_threat(threat)
+    opportunity_levels = fuzzy_membership_opportunity(opportunity)
+    
+    threat_comment, opportunity_comment = fuzzy_evaluate(threat_levels, opportunity_levels)
+    
+    return f"{threat_comment} , {opportunity_comment}"
+
+player_move_comment = ""
 
 while running:
     leftClick=False
@@ -693,7 +784,7 @@ while running:
 
     elif mode=='game':
         if game==True:
-            screen.fill(BLACK)
+            screen.blit(backpic,(0,0))
             screen.blit(infectedPic,(290,45))
             game=False
 
@@ -718,6 +809,10 @@ while running:
 
         elif validClick(gameRect, leftClick, mx, my) and validMove(board, px, py, playerTurn1):
             add(px,py,playerTurn1)
+            
+            player_move_comment = fuzzy_evaluate_player_move(board, playerTurn1,px, py)
+
+            display_player_move_comment(player_move_comment)
                         
             if playerTurn1==players:
                 playerTurn1=1
