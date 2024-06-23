@@ -189,7 +189,7 @@ def genetic_algorithm(board, player, population_size, num_parents, num_generatio
     best_move = None
     best_score = float('-inf')
     all_candidate_moves = []
-    if len(population) < 4 :
+    if len(population) < 6 :
         return population
     for _ in range(num_generations):
         fitness_scores = [evaluate_fitness(player, candidate) for candidate in population]
@@ -364,7 +364,7 @@ def minimax( depth, alpha, beta, maximizing_player, player):
 
     if maximizing_player:
         max_eval = float('-inf')
-        candidate_moves = genetic_algorithm(board, player, 25, 5, 2, 0.2)
+        candidate_moves = genetic_algorithm(board, player, 25, 20, 2, 0.2)
         for move in candidate_moves:
             x, y = move
             if board[y][x][0] == player or board[y][x][0] == 0:
@@ -383,7 +383,7 @@ def minimax( depth, alpha, beta, maximizing_player, player):
         return max_eval, best_move    
     else:
         min_eval = float('inf')
-        candidate_moves = genetic_algorithm(board, 1, 25, 5, 2, 0.2)
+        candidate_moves = genetic_algorithm(board, 1, 25, 20, 2, 0.2)
         for move in candidate_moves:
             x, y = move
             if board[y][x][0] == opponent or board[y][x][0] == 0:
@@ -408,7 +408,7 @@ def best_move(player):
     best_val = -float('inf')
     best_move = None
     
-    candidate_moves = genetic_algorithm(board, player, 25, 10, 5, 0.2)
+    candidate_moves = genetic_algorithm(board, player, 25, 20, 5, 0.2)
     for move in candidate_moves:
         x, y = move
         if board[y][x][0] == player or board[y][x][0] == 0:
