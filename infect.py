@@ -29,13 +29,14 @@ display.set_caption("Chain Infect")
 mode='title'
 rectList=[]
 row = 5
-col = 7
+col = 5
 board=[[[0,0] for i in range(col)]for l in range(row)]
 leftClick=False
 playerTurn1=1
 alivePlayers=[]
 
 count=0
+dummy_count=0
 colours = [(255,0,0), (0, 255, 0), (0, 0, 255), (252,241,32)]
 players=0
 game=False
@@ -188,7 +189,8 @@ def genetic_algorithm(board, player, population_size, num_parents, num_generatio
     best_move = None
     best_score = float('-inf')
     all_candidate_moves = []
-
+    if len(population) < 4 :
+        return population
     for _ in range(num_generations):
         fitness_scores = [evaluate_fitness(player, candidate) for candidate in population]
         parents = rank_based_selection(population, fitness_scores, num_parents)
@@ -217,17 +219,17 @@ def dummy_add(x, y, playerTurn1):
     if board[y][x][1] == 0:
         board[y][x] = [playerTurn1, 1]
     elif board[y][x][0] == playerTurn1:
-        if isCorner(x, y):
+        if isCorner(x, y) and board[y][x][1]==1 :
             dummy_explodeCorner(x, y, playerTurn1, alivePlayers)
         elif isEdge(x, y):
             if board[y][x][1] < 2:
                 board[y][x][1] += 1
-            else:
+            elif board[y][x][1]==2:
                 dummy_explodeEdge(x, y, playerTurn1, alivePlayers)
         else:
             if board[y][x][1] < 3:
                 board[y][x][1] += 1
-            else:
+            elif board[y][x][1]==3:
                 dummy_explodeMiddle(x, y, playerTurn1, alivePlayers)
 
 def dummy_explodeCorner(x, y, playerTurn1, alivePlayers):
@@ -284,6 +286,7 @@ def dummy_explodeEdge(x, y, playerTurn1, alivePlayers):
         dummy_explodeAdd(x+1, y, x, y, playerTurn1, alivePlayers)
         board[y][x-1][0] = playerTurn1
         dummy_explodeAdd(x-1, y, x, y, playerTurn1, alivePlayers)
+    
 
 def dummy_explodeMiddle(x, y, playerTurn1, alivePlayers):
     board[y][x] = [0, 0]
@@ -302,17 +305,17 @@ def dummy_explodeAdd(x, y, oldx, oldy, player, alivePlayers):
     if board[y][x][1] == 0:
         board[y][x] = [player, 1]
     else:
-        if isCorner(x, y):
+        if isCorner(x, y) and board[y][x][1]==1:
             dummy_explodeCorner(x, y, player, alivePlayers)
         elif isEdge(x, y):
             if board[y][x][1] < 2:
                 board[y][x][1] += 1
-            else:
+            elif board[y][x][1]==2:
                 dummy_explodeEdge(x, y, player, alivePlayers)
         else:
             if board[y][x][1] < 3:
                 board[y][x][1] += 1
-            else:
+            elif board[y][x][1]==3:
                 dummy_explodeMiddle(x, y, player, alivePlayers)
     board[y][x] = [0, 0]
 
@@ -361,9 +364,10 @@ def minimax( depth, alpha, beta, maximizing_player, player):
 
     if maximizing_player:
         max_eval = float('-inf')
-        for y in range(row):
-            for x in range(col):
-                if board[y][x][0] == player or board[y][x][0] == 0:
+        candidate_moves = genetic_algorithm(board, player, 25, 5, 2, 0.2)
+        for move in candidate_moves:
+            x, y = move
+            if board[y][x][0] == player or board[y][x][0] == 0:
                     board_copy = copy.deepcopy(board)
                     dummy_add(x, y, player)
                     
@@ -376,12 +380,13 @@ def minimax( depth, alpha, beta, maximizing_player, player):
                     alpha = max(alpha, eval)
                     if beta <= alpha:
                         break
-        return max_eval, best_move
+        return max_eval, best_move    
     else:
         min_eval = float('inf')
-        for y in range(row):
-            for x in range(col):
-                if board[y][x][0] == opponent or board[y][x][0] == 0:
+        candidate_moves = genetic_algorithm(board, 1, 25, 5, 2, 0.2)
+        for move in candidate_moves:
+            x, y = move
+            if board[y][x][0] == opponent or board[y][x][0] == 0:
                     board_copy = copy.deepcopy(board)
                     alivePlayers_copy = copy.deepcopy(alivePlayers)
                     dummy_add(x, y, opponent)
@@ -397,41 +402,26 @@ def minimax( depth, alpha, beta, maximizing_player, player):
                         break
         return min_eval, best_move
 
+                
 def best_move(player):
     global alivePlayers,board
     best_val = -float('inf')
     best_move = None
     
-    if countTotal(board):
-        candidate_moves = genetic_algorithm(board, player, 50, 10, 5, 0.2)
-        for move in candidate_moves:
-            x, y = move
-            if board[y][x][0] == player or board[y][x][0] == 0:
-                board_copy = copy.deepcopy(board)
+    candidate_moves = genetic_algorithm(board, player, 25, 10, 5, 0.2)
+    for move in candidate_moves:
+        x, y = move
+        if board[y][x][0] == player or board[y][x][0] == 0:
+            board_copy = copy.deepcopy(board)
 
-                dummy_add(x, y, player)
-                move_val, _ = minimax( 2, float('-inf'), float('inf'), False, player)
-                board = copy.deepcopy(board_copy)
-                if move_val > best_val:
-                    best_val = move_val
-                    best_move = (x, y)
+            dummy_add(x, y, player)
+            move_val, _ = minimax( 10, float('-inf'), float('inf'), False, player)
+            board = copy.deepcopy(board_copy)
+            if move_val > best_val:
+                best_val = move_val
+                best_move = (x, y)
                     
-        print(f"Best move GA: {best_move} with value: {best_val}")
-    else:
-        for y in range(row):
-            for x in range(col):
-                if board[y][x][0] == player or board[y][x][0] == 0:
-                    board_copy = copy.deepcopy(board)
-                    alivePlayers_copy = copy.deepcopy(alivePlayers)
-                    dummy_add(x, y, player)
-                    move_val, _ = minimax( 2, float('-inf'), float('inf'), False, player)
-                    board = copy.deepcopy(board_copy)
-                    alivePlayers = copy.deepcopy(alivePlayers_copy)
-                    if move_val > best_val:
-                        best_val = move_val
-                        best_move = (x, y)
-                    
-        print(f"Best move minmax so far: {best_move} with value: {best_val}")
+    print(f"Best move GA: {best_move} with value: {best_val}")    
     return best_move
     
 
@@ -637,7 +627,7 @@ def countTotal(board):
         for x in range(col):
             if board[y][x][0] != 0:  
                 total_occupied += 1
-    if total_occupied<(row*col)/2:
+    if total_occupied<(row*col)*0.75:
         return 1
     else:
         return 0

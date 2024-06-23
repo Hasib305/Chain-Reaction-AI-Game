@@ -1,1 +1,1 @@
-if 'last_comment_rect' in globals():
+evaluate_fitness
