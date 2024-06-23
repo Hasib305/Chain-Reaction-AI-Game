@@ -189,8 +189,7 @@ def genetic_algorithm(board, player, population_size, num_parents, num_generatio
     best_move = None
     best_score = float('-inf')
     all_candidate_moves = []
-    if len(population) < 6 :
-        return population
+
     for _ in range(num_generations):
         fitness_scores = [evaluate_fitness(player, candidate) for candidate in population]
         parents = rank_based_selection(population, fitness_scores, num_parents)
@@ -364,10 +363,9 @@ def minimax( depth, alpha, beta, maximizing_player, player):
 
     if maximizing_player:
         max_eval = float('-inf')
-        candidate_moves = genetic_algorithm(board, player, 25, 20, 2, 0.2)
-        for move in candidate_moves:
-            x, y = move
-            if board[y][x][0] == player or board[y][x][0] == 0:
+        for y in range(row):
+            for x in range(col):
+                if board[y][x][0] == player or board[y][x][0] == 0:
                     board_copy = copy.deepcopy(board)
                     dummy_add(x, y, player)
                     
@@ -380,13 +378,12 @@ def minimax( depth, alpha, beta, maximizing_player, player):
                     alpha = max(alpha, eval)
                     if beta <= alpha:
                         break
-        return max_eval, best_move    
+        return max_eval, best_move
     else:
         min_eval = float('inf')
-        candidate_moves = genetic_algorithm(board, 1, 25, 20, 2, 0.2)
-        for move in candidate_moves:
-            x, y = move
-            if board[y][x][0] == opponent or board[y][x][0] == 0:
+        for y in range(row):
+            for x in range(col):
+                if board[y][x][0] == opponent or board[y][x][0] == 0:
                     board_copy = copy.deepcopy(board)
                     alivePlayers_copy = copy.deepcopy(alivePlayers)
                     dummy_add(x, y, opponent)
@@ -402,26 +399,41 @@ def minimax( depth, alpha, beta, maximizing_player, player):
                         break
         return min_eval, best_move
 
-                
 def best_move(player):
     global alivePlayers,board
     best_val = -float('inf')
     best_move = None
     
-    candidate_moves = genetic_algorithm(board, player, 25, 20, 5, 0.2)
-    for move in candidate_moves:
-        x, y = move
-        if board[y][x][0] == player or board[y][x][0] == 0:
-            board_copy = copy.deepcopy(board)
+    if countTotal(board):
+        candidate_moves = genetic_algorithm(board, player, 50, 10, 5, 0.2)
+        for move in candidate_moves:
+            x, y = move
+            if board[y][x][0] == player or board[y][x][0] == 0:
+                board_copy = copy.deepcopy(board)
 
-            dummy_add(x, y, player)
-            move_val, _ = minimax( 10, float('-inf'), float('inf'), False, player)
-            board = copy.deepcopy(board_copy)
-            if move_val > best_val:
-                best_val = move_val
-                best_move = (x, y)
+                dummy_add(x, y, player)
+                move_val, _ = minimax( 2, float('-inf'), float('inf'), False, player)
+                board = copy.deepcopy(board_copy)
+                if move_val > best_val:
+                    best_val = move_val
+                    best_move = (x, y)
                     
-    print(f"Best move GA: {best_move} with value: {best_val}")    
+        print(f"Best move GA: {best_move} with value: {best_val}")
+    else:
+        for y in range(row):
+            for x in range(col):
+                if board[y][x][0] == player or board[y][x][0] == 0:
+                    board_copy = copy.deepcopy(board)
+                    
+                    dummy_add(x, y, player)
+                    move_val, _ = minimax( 3, float('-inf'), float('inf'), False, player)
+                    board = copy.deepcopy(board_copy)
+                    
+                    if move_val > best_val:
+                        best_val = move_val
+                        best_move = (x, y)
+                    
+        print(f"Best move minmax so far: {best_move} with value: {best_val}")
     return best_move
     
 
